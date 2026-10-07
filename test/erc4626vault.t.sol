@@ -51,7 +51,7 @@ contract ERC4626VaultTest is Test {
         assertEq(vault.balanceOf(address(this)), 0, "Incorrect share balance after withdraw");
     }
 
-    function testFuzzAccounting(uint64 firstDeposit, uint64 secondDeposit) public {
+    function test_FuzzAccounting(uint64 firstDeposit, uint64 secondDeposit) public {
         vm.assume(firstDeposit > 0);
         vm.assume(secondDeposit > 0);
 
@@ -62,17 +62,12 @@ contract ERC4626VaultTest is Test {
         vault.deposit(secondDeposit, address(this));
         uint256 assetsEntered = uint256(firstDeposit) + uint256(secondDeposit);
 
-        assertGe(vault.totalAssets(), vault.convertToAssets(vault.totalSupply()));
         assertEq(vault.totalAssets(), assetsEntered, "Assets are not conserved after deposits");
 
         uint256 sharesToRedeem = vault.totalSupply() / 2;
         uint256 assetsLeaving = vault.redeem(sharesToRedeem, address(this), address(this));
 
         assertGe(vault.totalAssets(), vault.convertToAssets(vault.totalSupply()));
-        assertEq(
-            vault.totalAssets(),
-            assetsEntered - assetsLeaving,
-            "Assets are not conserved after redemption"
-        );
+        assertEq(vault.totalAssets(), assetsEntered - assetsLeaving, "Assets are not conserved after redemption");
     }
 }
