@@ -4,21 +4,14 @@ pragma solidity ^0.8.20;
 import {Test} from "../lib/forge-std/src/Test.sol";
 import {ERC20} from "../lib/solmate/src/tokens/ERC20.sol";
 import {ERC4626Vault} from "../src/erc4626vault.sol";
-
-contract MockERC20 is ERC20 {
-    constructor() ERC20("Mock Token", "MCK", 18) {}
-
-    function mint(address to, uint256 amount) public {
-        _mint(to, amount);
-    }
-}
+import {MockOracle, MockUSDC, MockWETH} from "../src/mockasset.sol";
 
 contract ERC4626VaultTest is Test {
     ERC4626Vault public vault;
-    MockERC20 public underlyingToken;
+    MockWETH public underlyingToken;
 
     function setUp() public {
-        underlyingToken = new MockERC20();
+        underlyingToken = new MockWETH();
 
         vault = new ERC4626Vault(ERC20(address(underlyingToken)), "Vault Token", "vMCK");
     }
@@ -69,5 +62,30 @@ contract ERC4626VaultTest is Test {
 
         assertGe(vault.totalAssets(), vault.convertToAssets(vault.totalSupply()));
         assertEq(vault.totalAssets(), assetsEntered - assetsLeaving, "Assets are not conserved after redemption");
+    }
+
+    function test_MockAssetDecimalsAndMinting() public {
+        MockUSDC usdc = new MockUSDC();
+
+        assertEq(underlyingToken.decimals(), 18);
+        assertEq(usdc.decimals(), 6);
+
+        usdc.mint(address(this), 1_000_000);
+        assertEq(usdc.balanceOf(address(this)), 1_000_000);
+        usdc.burn(address(this), 250_000);
+        assertEq(usdc.balanceOf(address(this)), 750_000);
+    }
+
+    function test_MockOraclePriceIsConfigurable() public {
+        MockOracle oracle = new MockOracle(2_000e8);
+
+        assertEq(oracle.decimals(), 8);
+        assertEq(oracle.getPrice(), 2_000e8);
+        assertEq(oracle.latestAnswer(), int256(2_000e8));
+
+        oracle.setPrice(2_100e8);
+
+        assertEq(oracle.getPrice(), 2_100e8);
+        assertEq(oracle.latestAnswer(), int256(2_100e8));
     }
 }
